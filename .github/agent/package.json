@@ -1,0 +1,13 @@
+{
+  "name": "agentic-ollama-action",
+  "version": "1.0.0",
+  "description": "Agentic AI Action powered by Ollama Cloud",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0",
+    "@octokit/rest": "^20.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}

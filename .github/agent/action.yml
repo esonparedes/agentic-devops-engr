@@ -1,0 +1,12 @@
+name: "Agentic Ollama DevOps Action"
+description: "Autonomous AI assistant that proposes safe PRs using Ollama Cloud"
+inputs:
+  trigger_type:
+    description: "Type of trigger (manual or comment)"
+    required: false
+  comment_body:
+    description: "User comment text"
+    required: false
+runs:
+  using: "node20"
+  main: "index.js"
