@@ -194,17 +194,31 @@ ${workflow.slice(0, 1000)}
       const contentB64 = Buffer.from(file.content, "utf8").toString("base64");
       let sha;
       try {
+        // First try to get SHA from the target branch
         const existing = await octokit.repos.getContent({
           owner: repo.owner,
           repo: repo.repo,
           path: file.path,
-          ref: defaultBranch,
+          ref: branch, // Use the target branch instead of defaultBranch
         });
         sha = existing.data.sha;
-      } catch {
-        sha = undefined;
+      } catch (err) {
+        // If file doesn't exist in target branch, try default branch
+        try {
+          const existing = await octokit.repos.getContent({
+            owner: repo.owner,
+            repo: repo.repo,
+            path: file.path,
+            ref: defaultBranch,
+          });
+          sha = existing.data.sha;
+        } catch {
+          // If file doesn't exist in either branch, it's a new file
+          sha = undefined;
+        }
       }
 
+      core.info(`Updating file ${file.path} in branch ${branch} (SHA: ${sha || 'new file'})`);
       await octokit.repos.createOrUpdateFileContents({
         owner: repo.owner,
         repo: repo.repo,
