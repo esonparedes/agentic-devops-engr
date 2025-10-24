@@ -196,20 +196,31 @@ ${workflow.slice(0, 1000)}
     }
 
     let pr;
-    const prBody = `### Proposed by Agentic Ollama AI\n\n${output.summary}\n\n<details><summary>Model Output</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`;
+    const timestamp = new Date().toISOString();
+    const newChangeSection = `\n\n### Update (${timestamp})\n\n${output.summary}\n\n<details><summary>Model Output for this update</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`;
 
     if (existingPR) {
+      // Get current PR body to append to it
+      const { data: currentPR } = await octokit.pulls.get({
+        owner: repo.owner,
+        repo: repo.repo,
+        pull_number: existingPR.number
+      });
+
+      const updatedBody = currentPR.body + newChangeSection;
+
       // Update existing PR
       pr = await octokit.pulls.update({
         owner: repo.owner,
         repo: repo.repo,
         pull_number: existingPR.number,
-        title: `Agentic PR: ${output.summary}`,
-        body: prBody,
+        title: `Agentic PR: ${currentPR.title.includes('Agentic PR:') ? currentPR.title.split('Agentic PR:')[1].trim() : output.summary}`,
+        body: updatedBody,
       });
       core.notice(`PR updated: ${pr.data.html_url}`);
     } else {
-      // Create new PR
+      // Create new PR with initial content
+      const initialBody = `### Proposed by Agentic Ollama AI\n\n${output.summary}${newChangeSection}`;
       pr = await octokit.pulls.create({
         owner: repo.owner,
         repo: repo.repo,
@@ -218,7 +229,7 @@ ${workflow.slice(0, 1000)}
         base: defaultBranch,
         draft: true,
         headers: { "X-GitHub-Api-Version": "2022-11-28" },
-        body: prBody,
+        body: initialBody,
       });
       core.notice(`PR created: ${pr.data.html_url}`);
     }
