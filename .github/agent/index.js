@@ -162,6 +162,8 @@ ${workflow.slice(0, 1000)}
       title: `Agentic PR: ${output.summary}`,
       head: branch,
       base: defaultBranch,
+      draft: true,
+      headers: { "X-GitHub-Api-Version": "2022-11-28" },
       body: `### Proposed by Agentic Ollama AI\n\n${output.summary}\n\n<details><summary>Model Output</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`,
     });
 
