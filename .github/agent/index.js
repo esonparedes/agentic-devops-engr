@@ -116,7 +116,32 @@ ${workflow.slice(0, 1000)}
       throw new Error("Model did not return valid files array");
     }
 
-    const branch = `agentic/${Date.now()}`;
+    // Extract PR number from comment if it exists (e.g., "#123" or "PR #123")
+    const prMatch = comment.match(/#(\d+)/);
+    let existingPR;
+    let branch;
+
+    if (prMatch) {
+      const prNumber = parseInt(prMatch[1], 10);
+      try {
+        // Try to get the existing PR
+        const { data: pr } = await octokit.pulls.get({
+          owner: repo.owner,
+          repo: repo.repo,
+          pull_number: prNumber
+        });
+        existingPR = pr;
+        branch = pr.head.ref;
+      } catch (err) {
+        core.warning(`Could not find PR #${prNumber}, creating new branch`);
+      }
+    }
+
+    // If no existing PR found, create new branch
+    if (!branch) {
+      branch = `agentic/${Date.now()}`;
+    }
+
     const baseRef = await octokit.git.getRef({
       owner: repo.owner,
       repo: repo.repo,
@@ -156,18 +181,33 @@ ${workflow.slice(0, 1000)}
       });
     }
 
-    const pr = await octokit.pulls.create({
-      owner: repo.owner,
-      repo: repo.repo,
-      title: `Agentic PR: ${output.summary}`,
-      head: branch,
-      base: defaultBranch,
-      draft: true,
-      headers: { "X-GitHub-Api-Version": "2022-11-28" },
-      body: `### Proposed by Agentic Ollama AI\n\n${output.summary}\n\n<details><summary>Model Output</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`,
-    });
+    let pr;
+    const prBody = `### Proposed by Agentic Ollama AI\n\n${output.summary}\n\n<details><summary>Model Output</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`;
 
-    core.notice(`PR created: ${pr.data.html_url}`);
+    if (existingPR) {
+      // Update existing PR
+      pr = await octokit.pulls.update({
+        owner: repo.owner,
+        repo: repo.repo,
+        pull_number: existingPR.number,
+        title: `Agentic PR: ${output.summary}`,
+        body: prBody,
+      });
+      core.notice(`PR updated: ${pr.data.html_url}`);
+    } else {
+      // Create new PR
+      pr = await octokit.pulls.create({
+        owner: repo.owner,
+        repo: repo.repo,
+        title: `Agentic PR: ${output.summary}`,
+        head: branch,
+        base: defaultBranch,
+        draft: true,
+        headers: { "X-GitHub-Api-Version": "2022-11-28" },
+        body: prBody,
+      });
+      core.notice(`PR created: ${pr.data.html_url}`);
+    }
   } catch (error) {
     core.setFailed(error.message);
   }
