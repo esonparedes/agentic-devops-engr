@@ -31,4 +31,4 @@ jobs:
           comment_body: ${{ github.event.comment.body || '' }}
         env:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
