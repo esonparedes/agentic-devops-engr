@@ -109,6 +109,27 @@ ${workflow.slice(0, 1000)}
     if (output.verdict === "HUMAN_REVIEW_REQUIRED") {
       core.warning("Model requires human review");
       core.notice(output.summary);
+      
+      // If there's a PR number in the comment, try to add a review comment
+      const prMatch = comment.match(/#(\d+)/);
+      if (prMatch) {
+        const prNumber = parseInt(prMatch[1], 10);
+        try {
+          const timestamp = new Date().toISOString();
+          const reviewBody = `### Human Review Required (${timestamp})\n\n${output.summary}\n\n<details><summary>Model Output</summary>\n\n${"```json\n" + JSON.stringify(output, null, 2) + "\n```"}\n\n</details>`;
+          
+          await octokit.issues.createComment({
+            owner: repo.owner,
+            repo: repo.repo,
+            issue_number: prNumber,
+            body: reviewBody
+          });
+          
+          core.info(`Added review request comment to PR #${prNumber}`);
+        } catch (err) {
+          core.warning(`Failed to add review comment: ${err.message}`);
+        }
+      }
       return;
     }
 
