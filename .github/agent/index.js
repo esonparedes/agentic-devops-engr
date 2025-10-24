@@ -142,18 +142,32 @@ ${workflow.slice(0, 1000)}
       branch = `agentic/${Date.now()}`;
     }
 
-    const baseRef = await octokit.git.getRef({
-      owner: repo.owner,
-      repo: repo.repo,
-      ref: `heads/${defaultBranch}`,
-    });
+    // Only create new branch if we're not using an existing PR's branch
+    if (!existingPR) {
+      const baseRef = await octokit.git.getRef({
+        owner: repo.owner,
+        repo: repo.repo,
+        ref: `heads/${defaultBranch}`,
+      });
 
-    await octokit.git.createRef({
-      owner: repo.owner,
-      repo: repo.repo,
-      ref: `refs/heads/${branch}`,
-      sha: baseRef.data.object.sha,
-    });
+      try {
+        await octokit.git.createRef({
+          owner: repo.owner,
+          repo: repo.repo,
+          ref: `refs/heads/${branch}`,
+          sha: baseRef.data.object.sha,
+        });
+        core.info(`Created new branch: ${branch}`);
+      } catch (err) {
+        if (err.status === 422 && err.message.includes('Reference already exists')) {
+          core.info(`Branch ${branch} already exists, continuing with updates`);
+        } else {
+          throw err; // Re-throw if it's a different error
+        }
+      }
+    } else {
+      core.info(`Using existing branch: ${branch} from PR #${existingPR.number}`);
+    }
 
     for (const file of output.files) {
       const contentB64 = Buffer.from(file.content, "utf8").toString("base64");
